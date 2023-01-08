@@ -1,4 +1,4 @@
-package com.chickencurry.wizardbackend.model;
+package com.chickencurry.wizardbackend.model.chat;
 
 import lombok.*;
 
@@ -11,5 +11,5 @@ public class ChatMessage {
     private String sender;
     private String message;
     private String date;
-    private Status status;
+    private ChatStatusType status;
 }
