@@ -6,26 +6,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Player {
-    private String name;
-    private final String id;
+
+    private String playerName;
+    private final String playerId;
     private final ArrayList<Card> hand;
 
-    public Player(String id, String name) {
-        this.id = id;
-        this.name = name;
+    public Player(String userId, String userName) {
+        this.playerId = userId;
+        this.playerName = userName;
         this.hand = new ArrayList<>();
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public List<Card> getHand() {
@@ -42,6 +31,18 @@ public class Player {
 
     public boolean hasInHand(Card card) {
         return hand.contains(card);
+    }
+
+    public String getPlayerName() {
+        return playerName;
+    }
+
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
+    }
+
+    public String getPlayerId() {
+        return playerId;
     }
 
 }

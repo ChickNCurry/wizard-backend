@@ -1,9 +1,9 @@
 package com.chickencurry.wizardbackend.service;
 
+import com.chickencurry.wizardbackend.components.GamesMap;
 import com.chickencurry.wizardbackend.model.card.Card;
 import com.chickencurry.wizardbackend.model.card.CardSuit;
 import com.chickencurry.wizardbackend.model.card.CardType;
-import com.chickencurry.wizardbackend.model.game.GameScore;
 import com.chickencurry.wizardbackend.model.game.GameStage;
 import com.chickencurry.wizardbackend.model.game.GameState;
 import com.chickencurry.wizardbackend.model.player.Player;
@@ -17,190 +17,206 @@ import java.util.Stack;
 @Service
 public class GameService {
 
-    private final GameState state;
-    private final GameScore score;
+    private final UserService userService;
+    private final GamesMap gamesMap;
 
     @Autowired
-    public GameService(GameState state, GameScore score) {
-        this.state = state;
-        this.score = score;
+    public GameService(UserService userService, GamesMap gamesMap) {
+        this.userService = userService;
+        this.gamesMap = gamesMap;
     }
 
-    public void hostGame(Player player) {
-        state.setHost(player);
+    public List<Player> getPlayers(String gameId) {
+        return gamesMap.getGame(gameId).getPlayers();
     }
 
-    public void addPlayer(Player player) {
-        state.addPlayer(player);
-        score.addPlayer(player);
+    public Player getTurnPlayer(String gameId) {
+        return gamesMap.getGame(gameId).getCurrentTurnPlayer();
     }
 
-    public void removePlayer(String playerId) {
-        state.removePlayer(playerId);
-        score.removePlayer(playerId);
+    public void createGame(List<String> userIds) {
+        String gameId = gamesMap.createGame(userIds.stream()
+                .map(entry -> new Player(entry, userService.getUser(entry).getUserName())).toList());
+
+        new Thread(() -> {
+            try {
+                runGame(gameId, userIds.get(0));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
     }
 
-    public void updatePlayer(String playerId, Player player) {
-        state.removePlayer(playerId);
-        score.removePlayer(playerId);
+    public void deleteGame(String gameId) {
+        gamesMap.deleteGame(gameId);
     }
 
-    public List<Player> getPlayers() {
-        return state.getPlayers();
-    }
+    public synchronized void runGame(String gameId, String playerId) throws InterruptedException {
+        GameState game = gamesMap.getGame(gameId);
 
-    public Player getTurnPlayer() {
-        return state.getCurrentTurnPlayer();
-    }
+        if(!playerId.equals(game.getHost().getPlayerId())) return;
 
-    public synchronized void runGame(String playerId) throws InterruptedException {
-        if(!playerId.equals(state.getHost().getId())) return;
-
-        if(!state.isReady()) {
-            System.out.println("invalid player count: " + state.getPlayerCount());
+        if(!game.isReady()) {
+            System.out.println("invalid player count: " + game.getPlayerCount());
             return;
         }
 
-        int rounds = state.getDeck().getDeckSize() / state.getPlayerCount();
+        int rounds = game.getDeck().getDeckSize() / game.getPlayerCount();
         for(int i = 0; i < rounds; i++) {
-            state.setCurrentRound(i + 1);
-            runDealingStage();
-            runBiddingStage();
-            runPlayingStage();
-            state.rotateDealer();
+            game.setCurrentRound(i + 1);
+            runDealingStage(gameId);
+            runBiddingStage(gameId);
+            runPlayingStage(gameId);
+            game.rotateDealer();
         }
 
-        state.setWinners(score.determineWinners(state.getPlayers()));
+        game.setWinners(game.getGameScore().determineWinners(game.getPlayers()));
     }
 
-    private synchronized void runDealingStage() throws InterruptedException {
-        state.setCurrentGameStage(GameStage.DEALING);
-        state.resetDeck();
+    private synchronized void runDealingStage(String gameId) throws InterruptedException {
+        GameState game = gamesMap.getGame(gameId);
+
+        game.setCurrentGameStage(GameStage.DEALING);
+        game.resetDeck();
 
         // distribute cards
-        for(int i = 0; i < state.getCurrentRound(); i++) {
-            for(Player player : state.getPlayers()) {
-                player.addToHand(state.popDeck());
+        for(int i = 0; i < game.getCurrentRound(); i++) {
+            for(Player player : game.getPlayers()) {
+                player.addToHand(game.popDeck());
             }
         }
 
         // set trump suit
-        if(!state.isDeckEmpty()) {
-            Card card = state.popDeck();
+        if(!game.isDeckEmpty()) {
+            Card card = game.popDeck();
             if(card.type() == CardType.JESTER) {
-                state.setCurrentTrumpSuit(null);
+                game.setCurrentTrumpSuit(null);
             } else if (card.type() == CardType.WIZARD) {
                 // wait until trump suit is chosen by dealer
-                state.setCurrentTurnPlayer(state.getPlayers().getLast());
-                state.setTrumpSuitChosen(false);
-                while (!state.isTrumpSuitChosen()) {
+                game.setCurrentTurnPlayer(game.getPlayers().getLast());
+                game.setTrumpSuitChosen(false);
+                while (!game.isTrumpSuitChosen()) {
                     wait();
                 }
-                state.setCurrentTurnPlayer(null);
+                game.setCurrentTurnPlayer(null);
             }
         } else {
-            state.setCurrentTrumpSuit(null);
+            game.setCurrentTrumpSuit(null);
         }
     }
 
-    private synchronized void runBiddingStage() throws InterruptedException {
-        state.setCurrentGameStage(GameStage.BIDDING);
-        score.resetTricks();
+    private synchronized void runBiddingStage(String gameId) throws InterruptedException {
+        GameState game = gamesMap.getGame(gameId);
 
-        for(Player player: state.getPlayers()) {
+        game.setCurrentGameStage(GameStage.BIDDING);
+        game.getGameScore().resetTricks();
+
+        for(Player player: game.getPlayers()) {
             // wait until trick count is chosen by turn player
-            state.setCurrentTurnPlayer(player);
-            state.setTricksPredicted(false);
-            while(!state.isTricksPredicted()) {
+            game.setCurrentTurnPlayer(player);
+            game.setTricksPredicted(false);
+            while(!game.isTricksPredicted()) {
                 wait();
             }
-            state.setCurrentTurnPlayer(null);
+            game.setCurrentTurnPlayer(null);
         }
     }
 
-    private synchronized void runPlayingStage() throws InterruptedException {
-        state.setCurrentGameStage(GameStage.PLAYING);
-        state.resetPlayedCards();
+    private synchronized void runPlayingStage(String gameId) throws InterruptedException {
+        GameState game = gamesMap.getGame(gameId);
 
-        for (int i = 0; i < state.getCurrentRound(); i++) {
-            state.setCurrentDesiredSuit(null);
-            for(Player player: state.getPlayers()) {
+        game.setCurrentGameStage(GameStage.PLAYING);
+        game.resetPlayedCards();
+
+        for (int i = 0; i < game.getCurrentRound(); i++) {
+            game.setCurrentDesiredSuit(null);
+            for(Player player: game.getPlayers()) {
                 // wait until card is played by turn player
-                state.setCurrentTurnPlayer(player);
-                state.setCardPlayed(false);
-                while(!state.isCardPlayed()) {
+                game.setCurrentTurnPlayer(player);
+                game.setCardPlayed(false);
+                while(!game.isCardPlayed()) {
                     wait();
                 }
-                state.setCurrentTurnPlayer(null);
+                game.setCurrentTurnPlayer(null);
             }
-            Player winner = evaluateTrickWinner();
-            score.addToTrickCount(winner);
+            Player winner = evaluateTrickWinner(gameId);
+            game.getGameScore().addToTrickCount(winner);
         }
 
-        score.recordScores(state.getPlayers());
+        game.getGameScore().recordScores(game.getPlayers());
     }
 
-    public synchronized void chooseTrumpSuit(String playerId, CardSuit suit) {
-        if(state.getCurrentGameStage() == GameStage.DEALING
-                && playerId.equals(state.getCurrentTurnPlayer().getId())) {
-            state.setCurrentTrumpSuit(suit);
-            state.setTrumpSuitChosen(true);
+    public synchronized void chooseTrumpSuit(String gameId, String playerId, CardSuit suit) {
+        GameState game = gamesMap.getGame(gameId);
+
+        if(game.getCurrentGameStage() == GameStage.DEALING
+                && playerId.equals(game.getCurrentTurnPlayer().getPlayerId())) {
+            game.setCurrentTrumpSuit(suit);
+            game.setTrumpSuitChosen(true);
             notifyAll();
         }
     }
 
-    public synchronized void predictTricks(String playerId, int tricks) {
-        if(state.getCurrentGameStage() == GameStage.BIDDING
-                && playerId.equals(state.getCurrentTurnPlayer().getId())) {
-            score.recordTrickPrediction(state.getCurrentTurnPlayer(), tricks);
-            state.setTricksPredicted(true);
+    public synchronized void predictTricks(String gameId, String playerId, int tricks) {
+        GameState game = gamesMap.getGame(gameId);
+
+        if(game.getCurrentGameStage() == GameStage.BIDDING
+                && playerId.equals(game.getCurrentTurnPlayer().getPlayerId())) {
+            game.getGameScore().recordTrickPrediction(game.getCurrentTurnPlayer(), tricks);
+            game.setTricksPredicted(true);
             notifyAll();
         }
     }
 
-    public synchronized void playCard(String playerId, Card card) {
-        if(state.getCurrentGameStage() == GameStage.PLAYING
-                && playerId.equals(state.getCurrentTurnPlayer().getId())) {
+    public synchronized void playCard(String gameId, String playerId, Card card) {
+        GameState game = gamesMap.getGame(gameId);
 
-            if(state.getCurrentTurnPlayer().hasInHand(card) && isCardPlayable(card)) {
+        if(game.getCurrentGameStage() == GameStage.PLAYING
+                && playerId.equals(game.getCurrentTurnPlayer().getPlayerId())) {
 
-                state.playCard(card);
+            if(game.getCurrentTurnPlayer().hasInHand(card) && isCardPlayable(gameId, card)) {
+
+                game.playCard(card);
 
                 // if desired suit not yet set and current card is number card
-                if(state.getCurrentDesiredSuit() != null && card.isNumberCard()) {
+                if(game.getCurrentDesiredSuit() != null && card.isNumberCard()) {
 
                     // if current card is first then set desired suit
-                    if(state.getPlayedCards().empty()) {
-                        state.setCurrentDesiredSuit(card.suit());
+                    if(game.getPlayedCards().empty()) {
+                        game.setCurrentDesiredSuit(card.suit());
                     }
                     //if jester was first and wizard was not second
-                    if(state.getPlayedCards().size() > 1
-                            && state.getPlayedCards().get(0).card().isJester()
-                            && !state.getPlayedCards().get(1).card().isWizard()) {
-                        state.setCurrentDesiredSuit(card.suit());
+                    if(game.getPlayedCards().size() > 1
+                            && game.getPlayedCards().get(0).card().isJester()
+                            && !game.getPlayedCards().get(1).card().isWizard()) {
+                        game.setCurrentDesiredSuit(card.suit());
                     }
                 }
 
-                state.setCardPlayed(true);
+                game.setCardPlayed(true);
                 notifyAll();
             }
         }
     }
 
-    public boolean isCardPlayable(Card card) {
+    public boolean isCardPlayable(String gameId, Card card) {
+        GameState game = gamesMap.getGame(gameId);
+
         if(card.type() == CardType.JESTER || card.type() == CardType.WIZARD) return true;
-        else if(state.getCurrentDesiredSuit() == null) return true;
-        else if(state.getCurrentDesiredSuit() == card.suit()) return true;
+        else if(game.getCurrentDesiredSuit() == null) return true;
+        else if(game.getCurrentDesiredSuit() == card.suit()) return true;
         else {
-            for(Card c: state.getCurrentTurnPlayer().getHand()) {
-                if (c.suit() == state.getCurrentDesiredSuit()) return false;
+            for(Card c: game.getCurrentTurnPlayer().getHand()) {
+                if (c.suit() == game.getCurrentDesiredSuit()) return false;
             }
         }
         return true;
     }
 
-    private Player evaluateTrickWinner() {
-        Stack<PlayerCardPair> playedCards = state.getPlayedCards();
+    private Player evaluateTrickWinner(String gameId) {
+        GameState game = gamesMap.getGame(gameId);
+
+        Stack<PlayerCardPair> playedCards = game.getPlayedCards();
         PlayerCardPair trickWinner = null;
 
         while(!playedCards.isEmpty()) {
@@ -213,8 +229,8 @@ public class GameService {
                 trickWinner = top;
             }
             else if(top.card().isNumberCard()) {
-                if(top.card().suit() == state.getCurrentTrumpSuit()) {
-                    if(trickWinner.card().suit() == state.getCurrentTrumpSuit()) {
+                if(top.card().suit() == game.getCurrentTrumpSuit()) {
+                    if(trickWinner.card().suit() == game.getCurrentTrumpSuit()) {
                         if(top.card().getNumber() > trickWinner.card().getNumber()) {
                             trickWinner = top;
                         }
@@ -222,9 +238,9 @@ public class GameService {
                         trickWinner = top;
                     }
                 }
-                else if (top.card().suit() == state.getCurrentDesiredSuit()) {
-                    if(trickWinner.card().suit() != state.getCurrentTrumpSuit()) {
-                        if(trickWinner.card().suit() == state.getCurrentDesiredSuit()) {
+                else if (top.card().suit() == game.getCurrentDesiredSuit()) {
+                    if(trickWinner.card().suit() != game.getCurrentTrumpSuit()) {
+                        if(trickWinner.card().suit() == game.getCurrentDesiredSuit()) {
                             if(top.card().getNumber() > trickWinner.card().getNumber()) {
                                 trickWinner = top;
                             }
@@ -233,8 +249,8 @@ public class GameService {
                         }
                     }
                 }
-                else if (trickWinner.card().suit() != state.getCurrentTrumpSuit()
-                        && trickWinner.card().suit() != state.getCurrentDesiredSuit()
+                else if (trickWinner.card().suit() != game.getCurrentTrumpSuit()
+                        && trickWinner.card().suit() != game.getCurrentDesiredSuit()
                         && top.card().getNumber() > trickWinner.card().getNumber()) {
                     trickWinner = top;
                 }
@@ -242,14 +258,15 @@ public class GameService {
         }
 
         if(trickWinner == null) {
-            trickWinner = state.getPlayedCards().firstElement();
+            trickWinner = game.getPlayedCards().firstElement();
         }
 
         return trickWinner.player();
     }
 
-    public List<Player> getWinners() {
-        return state.getWinners();
+    public List<Player> getWinners(String gameId) {
+        GameState game = gamesMap.getGame(gameId);
+        return game.getWinners();
     }
 
 }

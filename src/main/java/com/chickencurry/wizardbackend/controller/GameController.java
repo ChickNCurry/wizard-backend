@@ -18,27 +18,24 @@ public class GameController {
         this.gameService = gameService;
     }
 
-    @MessageMapping("/set-ready")
-    @SendTo("/game")
-    public GameAction setReady(@Payload GameAction action) {
-        return action;
-    }
-
     @MessageMapping("/choose-trump-suit")
     @SendTo("/game")
     public GameAction chooseTrumpSuit(@Payload GameAction action) {
+        gameService.chooseTrumpSuit(action.getGameId(), action.getPlayerId(), action.getCardSuit());
         return action;
     }
 
     @MessageMapping("/predict-tricks")
     @SendTo("/game")
     public GameAction predictTricks(@Payload GameAction action) {
+        gameService.predictTricks(action.getGameId(), action.getPlayerId(), action.getTricks());
         return action;
     }
 
     @MessageMapping("/play-card")
     @SendTo("/game")
     public GameAction playCard(@Payload GameAction action) {
+        gameService.playCard(action.getGameId(), action.getPlayerId(), action.getCard());
         return action;
     }
 

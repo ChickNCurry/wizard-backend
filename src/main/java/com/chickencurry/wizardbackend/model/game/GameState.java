@@ -5,18 +5,18 @@ import com.chickencurry.wizardbackend.model.card.CardDeck;
 import com.chickencurry.wizardbackend.model.card.CardSuit;
 import com.chickencurry.wizardbackend.model.player.Player;
 import com.chickencurry.wizardbackend.model.player.PlayerCardPair;
-import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
 
-@Component
 public class GameState {
 
     private final int MIN_PLAYER_COUNT = 3;
     private final int MAX_PLAYER_COUNT = 6;
 
+    private final String gameId;
+    private final GameScore gameScore;
     private final CardDeck deck;
     private GameStage currentStage;
     private int currentRound;
@@ -32,21 +32,28 @@ public class GameState {
     private boolean cardPlayed;
     private boolean tricksPredicted;
 
-    public GameState() {
+    public GameState(String gameId, List<Player> players) {
+        this.gameId = gameId;
+        this.players = new LinkedList<>(players);
+        this.gameScore = new GameScore(players);
+        this.host = players.get(0);
+        this.currentTurnPlayer = players.get(0);
+
         this.deck = new CardDeck();
-        this.currentStage = null;
+        this.playedCards = new Stack<>();
         this.currentRound = 0;
+        this.currentStage = null;
         this.currentTrumpSuit = null;
         this.currentDesiredSuit = null;
-        this.currentTurnPlayer = null;
-        this.playedCards = new Stack<>();
-        this.players = new LinkedList<>();
-        this.host = null;
         this.winners = null;
-        this.isReady = false;
         this.trumpSuitChosen = false;
         this.cardPlayed = false;
         this.tricksPredicted = false;
+        this.isReady = false;
+    }
+
+    public GameScore getGameScore() {
+        return gameScore;
     }
 
     public CardSuit getCurrentDesiredSuit() {
@@ -79,12 +86,12 @@ public class GameState {
     }
 
     public void removePlayer(String playerId) {
-        players.removeIf(player -> player.getId().equals(playerId));
+        players.removeIf(player -> player.getPlayerId().equals(playerId));
         isReady = MIN_PLAYER_COUNT <= players.size() && players.size() <= MAX_PLAYER_COUNT;
     }
 
     public void updatePlayer(String playerId, Player player) {
-        players.removeIf(p -> p.getId().equals(playerId));
+        players.removeIf(p -> p.getPlayerId().equals(playerId));
         players.add(player);
         isReady = MIN_PLAYER_COUNT <= players.size() && players.size() <= MAX_PLAYER_COUNT;
     }
