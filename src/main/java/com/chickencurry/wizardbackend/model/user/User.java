@@ -2,8 +2,8 @@ package com.chickencurry.wizardbackend.model.user;
 
 public class User {
 
-    private String userName;
     private final String userId;
+    private String userName;
     private String userPassword;
 
     public User(String userId, String userName, String userPassword) {

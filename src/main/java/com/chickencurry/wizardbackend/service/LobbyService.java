@@ -21,10 +21,21 @@ public class LobbyService {
         this.lobbiesMap = lobbiesMap;
     }
 
-    public List<LobbyIdNamePair> getLobbies() { return lobbiesMap.getLobbies(); }
+    public List<LobbyIdNamePair> getLobbies() {
+        return lobbiesMap.getLobbies();
+    }
 
-    public void createLobby(String userId, String lobbyName, String lobbyPassword) {
-        lobbiesMap.createLobby(userId, lobbyName, lobbyPassword);
+    public String getLobbyName(String lobbyId) {
+        return lobbiesMap.getLobbyName(lobbyId);
+    }
+
+    public List<String> getLobbyUserNames(String lobbyId) {
+        return lobbiesMap.getLobbyUserIds(lobbyId).stream()
+                .map(userId -> userService.getUser(userId).getUserName()).toList();
+    }
+
+    public String createLobby(String userId, String lobbyName, String lobbyPassword) {
+        return lobbiesMap.createLobby(userId, lobbyName, lobbyPassword);
     }
 
     public boolean joinLobby(String userId, String lobbyId, String lobbyPassword) {
@@ -33,15 +44,6 @@ public class LobbyService {
 
     public void leaveLobby(String lobbyId, String userId) {
         lobbiesMap.leaveLobby(lobbyId, userId);
-    }
-
-    public String getLobbyName(String lobbyId) {
-        return lobbiesMap.getLobbyName(lobbyId);
-    }
-
-    public List<String> getLobbyUsers(String lobbyId) {
-        return lobbiesMap.getLobbyUserIds(lobbyId).stream()
-                .map(userId -> userService.getUser(userId).getUserName()).toList();
     }
 
     public void toggleReady(String lobbyId, String userId) {

@@ -19,6 +19,10 @@ public class UserService {
         return usersMap.getUser(userId);
     }
 
+    public String getUserName(String userId) {
+        return usersMap.getUserName(userId);
+    }
+
     public String createUser(String userName, String userPassword) {
         return usersMap.createUser(userName, userPassword);
     }
@@ -26,5 +30,11 @@ public class UserService {
     public void deleteUser(String userId) {
         usersMap.deleteUser(userId);
     }
+
+    /*
+    public String loginUser(String userName, String userPassword) {
+        return usersMap.loginUser()
+    }
+     */
 
 }
