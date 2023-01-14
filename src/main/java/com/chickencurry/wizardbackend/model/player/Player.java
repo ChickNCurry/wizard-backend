@@ -11,9 +11,9 @@ public class Player {
     private final String playerId;
     private final ArrayList<Card> hand;
 
-    public Player(String userId, String userName) {
-        this.playerId = userId;
-        this.playerName = userName;
+    public Player(String userName, String userDisplayName) {
+        this.playerId = userName;
+        this.playerName = userDisplayName;
         this.hand = new ArrayList<>();
     }
 

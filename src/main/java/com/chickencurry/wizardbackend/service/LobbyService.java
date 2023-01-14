@@ -22,33 +22,33 @@ public class LobbyService {
     }
 
     public List<LobbyIdNamePair> getLobbies() {
-        return lobbiesMap.getLobbies();
+        return lobbiesMap.getLobbiesMap();
     }
 
     public String getLobbyName(String lobbyId) {
         return lobbiesMap.getLobbyName(lobbyId);
     }
 
-    public List<String> getLobbyUserNames(String lobbyId) {
-        return lobbiesMap.getLobbyUserIds(lobbyId).stream()
-                .map(userId -> userService.getUser(userId).getUserName()).toList();
+    public List<String> getLobbyUserDisplayNames(String lobbyId) {
+        return lobbiesMap.getLobbyUserNames(lobbyId).stream()
+                .map(userName -> userService.getUser(userName).getUserDisplayName()).toList();
     }
 
-    public String createLobby(String userId, String lobbyName, String lobbyPassword) {
-        return lobbiesMap.createLobby(userId, lobbyName, lobbyPassword);
+    public String createLobby(String userName, String lobbyName, String lobbyPassword) {
+        return lobbiesMap.createLobby(userName, lobbyName, lobbyPassword);
     }
 
-    public boolean joinLobby(String userId, String lobbyId, String lobbyPassword) {
-        return lobbiesMap.joinLobby(userId, lobbyId, lobbyPassword);
+    public boolean joinLobby(String userName, String lobbyId, String lobbyPassword) {
+        return lobbiesMap.joinLobby(userName, lobbyId, lobbyPassword);
     }
 
-    public void leaveLobby(String lobbyId, String userId) {
-        lobbiesMap.leaveLobby(lobbyId, userId);
+    public void leaveLobby(String lobbyId, String userName) {
+        lobbiesMap.leaveLobby(lobbyId, userName);
     }
 
-    public void toggleReady(String lobbyId, String userId) {
-        if(lobbiesMap.toggleReady(lobbyId, userId)) {
-            gameService.createGame(lobbiesMap.getLobbyUserIds(lobbyId));
+    public void toggleReady(String lobbyId, String userName) {
+        if(lobbiesMap.toggleReady(lobbyId, userName)) {
+            gameService.createGame(lobbiesMap.getLobbyUserNames(lobbyId));
         };
     }
 

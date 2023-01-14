@@ -34,13 +34,13 @@ public class GameService {
         return gamesMap.getGame(gameId).getCurrentTurnPlayer();
     }
 
-    public void createGame(List<String> userIds) {
-        String gameId = gamesMap.createGame(userIds.stream()
-                .map(entry -> new Player(entry, userService.getUser(entry).getUserName())).toList());
+    public void createGame(List<String> userNames) {
+        String gameId = gamesMap.createGame(userNames.stream()
+                .map(entry -> new Player(entry, userService.getUser(entry).getUserDisplayName())).toList());
 
         new Thread(() -> {
             try {
-                runGame(gameId, userIds.get(0));
+                runGame(gameId, userNames.get(0));
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

@@ -33,9 +33,9 @@ public class LobbyController {
         return lobbyService.getLobbyName(lobbyId);
     }
 
-    @GetMapping(path = "/get-lobby-user-names")
-    public List<String> getLobbyUserNames(@RequestBody String lobbyId) {
-        return lobbyService.getLobbyUserNames(lobbyId);
+    @GetMapping(path = "/get-lobby-users")
+    public List<String> getLobbyUsers(@RequestBody String lobbyId) {
+        return lobbyService.getLobbyUserDisplayNames(lobbyId);
     }
 
     @PostMapping(path = "/create-lobby")

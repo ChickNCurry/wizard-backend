@@ -12,24 +12,24 @@ import java.util.UUID;
 @Component
 public class GamesMap {
 
-    private final Map<String, GameState> games;
+    private final Map<String, GameState> gamesMap;
 
     public GamesMap() {
-        this.games = new HashMap<>();
+        this.gamesMap = new HashMap<>();
     }
 
     public GameState getGame(String gameId) {
-        return games.get(gameId);
+        return gamesMap.get(gameId);
     }
 
     public String createGame(List<Player> players) {
         String gameId = UUID.randomUUID().toString();
-        games.put(gameId, new GameState(gameId, players));
+        gamesMap.put(gameId, new GameState(gameId, players));
         return gameId;
     }
 
     public void deleteGame(String gameId) {
-        games.remove(gameId);
+        gamesMap.remove(gameId);
     }
 
 }
