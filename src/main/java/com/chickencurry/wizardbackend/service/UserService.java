@@ -44,8 +44,8 @@ public class UserService {
         return usersMap.createUser(userName, userPassword, userDisplayName);
     }
 
-    public void deleteUser(String userId) {
-        usersMap.deleteUser(userId);
+    public void deleteUser(String userName) {
+        usersMap.deleteUser(userName);
     }
 
     public boolean loginUser(String userName, String userPassword) {
